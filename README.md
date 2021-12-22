@@ -1,6 +1,15 @@
+# EventGrid Function Triggers to process blob files (.NET function App)
+
+This repo is adapted from https://github.com/Azure-Samples/function-image-upload-resize 
+
+
+Goals: 
+- [x] replicate the `Thumbnail` function to generate image thumbnails on upload of image files
+- [ ] create an Extractdoc function to extract a stringifie 
+
 1. Create the required Azure resources
 
-    Using the Azure CLI (adapted for python from [source](https://docs.microsoft.com/en-us/azure/azure-functions/scripts/functions-cli-create-serverless#sample-script)):
+    Using the Azure CLI :
     
     ```bash
     #!/bin/bash
@@ -50,7 +59,7 @@
 
     ```
 
-4. Deploy the function 
+3. Deploy the function app
 
    > Note: using the azure CLI with code pushed to a repo, since using function core tools would currently require a downgrade of the local tooling to v2./
 
@@ -66,30 +75,39 @@
 
     > Note: if this command errors with a note that it can't find the function app, the resource deployment may not yet have finished. Wait and try again. 
 
-3. Create and Event Grid subscription
+4. Create and Event Grid subscription
+
+    This eventgrid subscription connects events that are raised when a new blob is created to the execution of the function.
+
+    ```
+    functionappid=$(az resource list -g $newResourceGroup --query "[?name=='$functionAppName' && kind=='functionapp'].id" -o tsv)
+    sourceid=$(az resource list -n <data storage account name> -g <rg of data storage account> --query [].id -o tsv )
+
+    az eventgrid event-subscription create  --name imageresizesub \
+                                            --source-resource-id $sourceid \
+                                            --included-event-types Microsoft.Storage.BlobCreated \
+                                            --subject-begins-with /blobServices/default/containers/images/ \
+                                            --subject-ends-with .jpg \
+                                            --endpoint-type azurefunction \
+                                            --endpoint $functionappid/functions/Thumbnail \
+                                            --labels function-thumbnail
+
+                                          
+    ```
+
+
+5. Test the function by uploading an image to the image container in the LANDING_ZONE storage account and observing the thumbnail container.
 
 
 
-```
-functionappid=$(az resource list -g $newResourceGroup --query "[?name=='$functionAppName' && kind=='functionapp'].id" -o tsv)
-sourceid=$(az resource list -n <data storage account name> -g <rg of data storage account> --query [].id -o tsv )
-
-az eventgrid event-subscription create  --name imageresizesub \
-                                        --source-resource-id $sourceid \
-                                        --included-event-types Microsoft.Storage.BlobCreated \
-                                        --subject-begins-with /blobServices/default/containers/images/ \
-                                        --subject-ends-with .jpg \
-                                        --endpoint-type azurefunction \
-                                        --endpoint $functionappid/functions/Thumbnail \
-                                        --labels function-thumbnail
-
-                                       
-```
 
 
 
 
 
+---
+
+### Original Azure Sample repo readme below
 
 
 ---
