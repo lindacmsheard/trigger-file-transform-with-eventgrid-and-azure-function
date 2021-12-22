@@ -1,3 +1,63 @@
+1. Create the required Azure resources
+
+    Using the Azure CLI (adapted for python from [source](https://docs.microsoft.com/en-us/azure/azure-functions/scripts/functions-cli-create-serverless#sample-script)):
+    
+    ```bash
+    #!/bin/bash
+
+    # Function app and storage account names must be unique.
+    newResourceGroup=EventFunctionTestRG
+    storageName=utilitystorage$RANDOM
+    functionAppName=functionapp-cs-$RANDOM
+    region=uksouth
+
+    # Create a resource group.
+
+    az group create --name $newResourceGroup --location $region
+
+    # Create an Azure storage account in the resource group.
+    az storage account create \
+    --name $storageName \
+    --location $region \
+    --resource-group $newResourceGroup \
+    --sku Standard_LRS
+
+    # Create a serverless function app in the resource group.
+    az functionapp create \
+    --name $functionAppName \
+    --storage-account $storageName \
+    --consumption-plan-location $region \
+    --resource-group $newResourceGroup \
+    --functions-version 2
+    ```
+
+2. Configure the App settings to match the local setting used in the local test:
+
+    Get the connection string for the data storage account that will trigger the function. Copy this manually from your local.settings.json file and update the function App configuration blade in the Azure portal. 
+
+    or use the CLI:
+
+    ```
+    connstr=$(az storage account show-connection-string -g <resource group containing data storage account> -n <datastorageaccountname> -o tsv)
+    ```
+
+    update the function app settings:
+    
+    ```
+    az functionapp config appsettings set --name $functionAppName --resource-group $newResourceGroup --settings  LANDING_ZONE=$connstr THUMBNAIL_CONTAINER_NAME=thumbnails THUMBNAIL_WIDTH=100 
+
+    az functionapp config appsettings list -g $newResourceGroup -n $functionAppName
+
+    ```
+
+
+
+
+
+
+
+
+
 ---
 page_type: sample
 languages:
