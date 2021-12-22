@@ -5,7 +5,7 @@ This repo is adapted from https://github.com/Azure-Samples/function-image-upload
 
 Goals: 
 - [x] replicate the `Thumbnail` function to generate image thumbnails on upload of image files
-- [ ] create an Extractdoc function to extract a stringifie 
+- [ ] create an Extractdoc function to extract a stringified json document from another json doc (WIP, see dev branch)
 
 1. Create the required Azure resources
 
