@@ -56,8 +56,12 @@
 
     from the root folder of this repo:
     ```
-    az functionapp deployment source config --name $functionAppName --resource-group $newResourceGroup --branch main --manual-integration --repo-url https://github.com/lindacmsheard/trigger-file-transform-with-eventgrid-and-azure-function
+    az functionapp deployment source config --name $functionAppName --resource-group $newResourceGroup --branch main --manual-integration --repo-url https://github.com/lindacmsheard/trigger-file-transform-with-eventgrid-and-azure-function  
 
+    ```
+    for later updates to the code base (explicit sync required due to the --manual-integration option above)
+    ```
+    az functionapp deployment source sync --name $functionAppName --resource-group $newResourceGroup
     ```
 
     > Note: if this command errors with a note that it can't find the function app, the resource deployment may not yet have finished. Wait and try again. 

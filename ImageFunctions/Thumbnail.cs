@@ -118,7 +118,7 @@ namespace ImageFunctions
                 }
                 else
                 {
-                    log.LogInformation("Input was null.")
+                    log.LogInformation("Input was null.");
                 }
             }
             catch (Exception ex)
