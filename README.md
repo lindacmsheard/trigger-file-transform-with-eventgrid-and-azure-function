@@ -6,6 +6,7 @@ This repo is adapted from https://github.com/Azure-Samples/function-image-upload
 Goals: 
 - [x] replicate the `Thumbnail` function to generate image thumbnails on upload of image files
 - [ ] create an Extractdoc function to extract a stringifie 
+- [ ] stretch - update the whole thing to functions v3 or v4
 
 1. Create the required Azure resources
 
@@ -101,7 +102,34 @@ Goals:
 
 
 
+## Create a new function to process json documents
 
+1. Create ./ImageFunctions/Extractdoc.cs
+
+TODO: figure out whether ImageFunctions can just be renamed to BlobEventFunctions, and whether just adding a new CS doc to the project is sufficient for another function to be compiled on deploy
+
+2. Test locally
+
+TODO: follow some of the tips in the top of the function code file
+
+3. Re-deploy the function app
+```
+az functionapp deployment source sync --name $functionAppName --resource-group $newResourceGroup
+```
+
+4. Add a new eventgrid subscription 
+```
+   az eventgrid event-subscription create  --name jsonextractdocsub \
+                                            --source-resource-id $sourceid \
+                                            --included-event-types Microsoft.Storage.BlobCreated \
+                                            --subject-begins-with /blobServices/default/containers/changefeedtest/ \
+                                            --subject-ends-with .json \
+                                            --endpoint-type azurefunction \
+                                            --endpoint $functionappid/functions/Extractdoc \
+                                            --labels function-extractdoc
+
+```
+5. Test
 
 
 
