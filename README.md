@@ -70,7 +70,7 @@
 functionappid=$(az resource list -g $newResourceGroup --query "[?name=='$functionAppName' && kind=='functionapp'].id" -o tsv)
 sourceid=$(az resource list -n <data storage account name> -g <rg of data storage account> --query [].id -o tsv )
 
-az eventgrid event-subscription create  --name imageresizesub2 \
+az eventgrid event-subscription create  --name imageresizesub \
                                         --source-resource-id $sourceid \
                                         --included-event-types Microsoft.Storage.BlobCreated \
                                         --subject-begins-with /blobServices/default/containers/images/ \

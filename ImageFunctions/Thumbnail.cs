@@ -97,6 +97,8 @@ namespace ImageFunctions
                         var blobContainerClient = blobServiceClient.GetBlobContainerClient(thumbContainerName);
                         var blobName = GetBlobNameFromUrl(createdEvent.Url);
 
+                        log.LogInformation($"Processing: {createdEvent.Url}");
+
                         using (var output = new MemoryStream())
                         using (Image<Rgba32> image = Image.Load(input))
                         {
