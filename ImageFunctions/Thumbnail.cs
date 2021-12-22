@@ -7,6 +7,9 @@
 // Use for local testing:
 //   https://{ID}.ngrok.io/runtime/webhooks/EventGrid?functionName=Thumbnail
 
+
+// fixed issues with the update the v2 of the tutorial with reference to https://stackoverflow.com/a/53314953
+
 using Azure.Storage.Blobs;
 using Microsoft.Azure.EventGrid.Models;
 using Microsoft.Azure.WebJobs;
@@ -29,6 +32,7 @@ namespace ImageFunctions
 {
     public static class Thumbnail
     {
+        //private static readonly string BLOB_STORAGE_CONNECTION_STRING = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         private static readonly string BLOB_STORAGE_CONNECTION_STRING = Environment.GetEnvironmentVariable("LANDING_ZONE");
 
         private static string GetBlobNameFromUrl(string bloblUrl)
@@ -73,7 +77,8 @@ namespace ImageFunctions
         [FunctionName("Thumbnail")]
         public static async Task Run(
             [EventGridTrigger]EventGridEvent eventGridEvent,
-            [Blob("{data.url}", FileAccess.Read)] Stream input,
+//            [Blob("{data.url}", FileAccess.Read)] Stream input,
+            [Blob("{data.url}", FileAccess.Read, Connection = "LANDING_ZONE")] Stream input,
             ILogger log)
         {
             try
@@ -108,6 +113,10 @@ namespace ImageFunctions
                     {
                         log.LogInformation($"No encoder support for: {createdEvent.Url}");
                     }
+                }
+                else
+                {
+                    log.LogInformation("Input was null.")
                 }
             }
             catch (Exception ex)

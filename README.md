@@ -50,7 +50,37 @@
 
     ```
 
+4. Deploy the function 
 
+   > Note: using the azure CLI with code pushed to a repo, since using function core tools would currently require a downgrade of the local tooling to v2./
+
+    from the root folder of this repo:
+    ```
+    az functionapp deployment source config --name $functionAppName --resource-group $newResourceGroup --branch main --manual-integration --repo-url https://github.com/lindacmsheard/trigger-file-transform-with-eventgrid-and-azure-function
+
+    ```
+
+    > Note: if this command errors with a note that it can't find the function app, the resource deployment may not yet have finished. Wait and try again. 
+
+3. Create and Event Grid subscription
+
+
+
+```
+functionappid=$(az resource list -g $newResourceGroup --query "[?name=='$functionAppName' && kind=='functionapp'].id" -o tsv)
+sourceid=$(az resource list -n <data storage account name> -g <rg of data storage account> --query [].id -o tsv )
+
+az eventgrid event-subscription create  --name imageresizesub2 \
+                                        --source-resource-id $sourceid \
+                                        --included-event-types Microsoft.Storage.BlobCreated \
+                                        --subject-begins-with /blobServices/default/containers/images/ \
+                                        --subject-ends-with .jpg \
+                                        --endpoint-type azurefunction \
+                                        --endpoint $functionappid/functions/Thumbnail \
+                                        --labels function-thumbnail
+
+                                       
+```
 
 
 
