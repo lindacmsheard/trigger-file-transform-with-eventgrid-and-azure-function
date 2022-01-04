@@ -106,9 +106,15 @@ Goals:
 
 0. Pre-reqs
 
-create two containers in the LANDING_ZONE storage account:
+Create two containers in the LANDING_ZONE storage account:
 - `changefeedtest`: this will be the landing location for the incoming json documents, analogous to the `images` container in the previous example.
 - `changefeeddocs`: This wwil be the destination for storing the extracted json string as documents, analogous to the `thumbnails` container in the previous example. 
+
+Add the following lineitem to the `values` object in the  `local.settins.json` file:
+```
+    "DOC_CONTAINER_NAME": "changefeeddocs",
+```
+
 
 1. Review ./ImageFunctions/Extractdoc.cs
 
@@ -160,25 +166,55 @@ Within 5 minutes, navigate to the ngrok logs `localhost:4040` in the browser to 
 
 
 3. Re-deploy the function app
+
+Push any new code to the `main` branch, and then:
 ```
 az functionapp deployment source sync --name $functionAppName --resource-group $newResourceGroup
+```
+
+
+Update the function app settings:
+
+```
+az functionapp config appsettings set -n $functionAppName -g $newResourceGroup --settings "DOC_CONTAINER_NAME=changefeeddocs"
 ```
 
 4. Add a new eventgrid subscription 
 ```
    az eventgrid event-subscription create  --name jsonextractdocsub \
                                             --source-resource-id $sourceid \
-                                            --included-event-types Microsoft.Storage.BlobCreated \
-                                            --subject-begins-with /blobServices/default/containers/changefeedtest/ \
-                                            --subject-ends-with .json \
-                                            --endpoint-type azurefunction \
-                                            --endpoint $functionappid/functions/Extractdoc \
-                                            --labels function-extractdoc
+                                            
 
 ```
+
+Optionally, add an advanced filter to limit the trigger to a particular folder:
+
+```
+  az eventgrid event-subscription update  --name jsonextractdocsub \
+                                            --source-resource-id $sourceid \
+                                            --advanced-filter data.url StringContains /changefeeddocs/in/
+```
+
 5. Test
 
+To measure the time taken when uploading folders to the landing zone, get the time modified of the first and last file with:
 
+```
+container = changefeeddocs
+path = <blob_prefix>
+az storage blob list --num-results "*" -c $container --prefix $path --account-name lcmgexplorestorage --query "[].properties.creationTime | length(@)"
+az storage blob list --num-results "*" -c $container --prefix $path --account-name lcmgexplorestorage --query "[].properties.creationTime | sort(@)[0]"
+az storage blob list --num-results "*" -c $container --prefix $path --account-name lcmgexplorestorage --query "[].properties.creationTime | sort(@)[-1:]"
+
+```
+
+This Eventgrid + CSharp function implementation outperforms the BlobTrigger + Python function implementation, primarily because of the single threaded nature of the Azure python function app, which scales out to more workers only under significant load. 
+
+For folders of 50000 - 100000 small files, the limiting factor is the upload speed - from Azure compute, this is around `~3 ms` per file for larger batches, and the function execution completes at the same time as the upload completes. 
+
+This means a folder of 10000 files is processed in around 40 seconds, and a folder of 100000 files in around 5 minutes
+
+Conversely, the python app implementation takes 12 minutes and 1h:45m respectively, i.e on average `~60ms` per file
 
 ---
 
