@@ -26,7 +26,9 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
+//using System.Text.Json;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace ImageFunctions
 {
@@ -39,114 +41,90 @@ namespace ImageFunctions
         {
             var uri = new Uri(bloblUrl);
             var blobClient = new BlobClient(uri);
-            return blobClient.Name;
+                return blobClient.Name;
         }
 
-        // private static IImageEncoder GetEncoder(string extension)
-        // {
-        //     IImageEncoder encoder = null;
+        public class EventDoc
+        {
+            public string metadata { get; set; }
+            public string @namespace { get; set; }
+            public string fullDocument { get; set; }
+        }
+            
+        public class NamespaceInfo
+        {
+            public string collectionName { get; set; }
+        }
 
-        //     extension = extension.Replace(".", "");
+        public class ExtractedDoc
+        {
+            public string foo { get; set; }
+            public string bar { get; set; }
+        }
 
-        //     var isSupported = Regex.IsMatch(extension, "gif|png|jpe?g", RegexOptions.IgnoreCase);
-
-        //     if (isSupported)
-        //     {
-        //         switch (extension.ToLower())
-        //         {
-        //             case "png":
-        //                 encoder = new PngEncoder();
-        //                 break;
-        //             case "jpg":
-        //                 encoder = new JpegEncoder();
-        //                 break;
-        //             case "jpeg":
-        //                 encoder = new JpegEncoder();
-        //                 break;
-        //             case "gif":
-        //                 encoder = new GifEncoder();
-        //                 break;
-        //             default:
-        //                 break;
-        //         }
-        //     }
-
-        //     return encoder;
-        // }
 
         [FunctionName("Extractdoc")]
         public static async Task Run(
             [EventGridTrigger]EventGridEvent eventGridEvent,
-//            [Blob("{data.url}", FileAccess.Read)] Stream input,
             [Blob("{data.url}", FileAccess.Read, Connection = "LANDING_ZONE")] Stream input,
             ILogger log)
         {
             try
             {
-                if (input != null)
+                log.LogInformation(eventGridEvent.Data.ToString());
+                
+                if (input != null & input.CanRead)
 
                 {
                     var createdEvent = ((JObject)eventGridEvent.Data).ToObject<StorageBlobCreatedEventData>();
                     var extension = Path.GetExtension(createdEvent.Url);
-                // NEW CODE HERE:
 
                     var isjson= Regex.IsMatch(extension, "json", RegexOptions.IgnoreCase);
 
                     if (isjson)
                     {
                         var blobServiceClient = new BlobServiceClient(BLOB_STORAGE_CONNECTION_STRING);
-                        var blobContainerClient = blobServiceClient.GetBlobContainerClient(thumbContainerName);
+                        var docContainerName = Environment.GetEnvironmentVariable("DOC_CONTAINER_NAME");
+                        var blobContainerClient = blobServiceClient.GetBlobContainerClient(docContainerName);
                         var blobName = GetBlobNameFromUrl(createdEvent.Url);
 
                         log.LogInformation($"Processing: {createdEvent.Url}");
 
+                        string jsonstring = null;
                         using (var output = new MemoryStream())
-                        using (JSON<json> changefeeditem = JSON.Load(input))                // this is pseudo code - need to identify types to use and how to read json from stream into object
+                        using (StreamReader reader = new StreamReader(input)) 
+                        using (StreamWriter writer = new StreamWriter(output))                       
                         {
                             
-                            // Code here to manipulate the input, 
-                            // extract the stringified json, 
-                            // and push the resutling object into the output stream
+                            jsonstring = reader.ReadToEnd();
+                            log.LogInformation($"Loaded Blob Content: {jsonstring}");
+
+                            EventDoc inputdoc = JsonConvert.DeserializeObject<EventDoc>(jsonstring);
+
+                            log.LogInformation($"Contained FullDocument :{inputdoc.fullDocument}");
+
+                            NamespaceInfo info = JsonConvert.DeserializeObject<NamespaceInfo>(inputdoc.@namespace);
+
+                            log.LogInformation($"Collection: {info.collectionName}");
+
+                            ExtractedDoc doc = JsonConvert.DeserializeObject<ExtractedDoc>(inputdoc.fullDocument); 
 
 
+                            var jsondoc = JsonConvert.SerializeObject(doc, Formatting.Indented);
+                            log.LogInformation(jsondoc);
+                            
+                            writer.Write(jsondoc);
+                            writer.Flush();
                             output.Position = 0;
-                            await blobContainerClient.UploadBlobAsync(blobName, output);
+                            //output.Write(outputbytes, 0, outputbytes.Length);
+                            await blobContainerClient.UploadBlobAsync($"{info.collectionName}/{blobName}", output);
+                            
                         }
                     }
                     else
                     {
                         log.LogInformation($"Received a non-json input: {createdEvent.Url}");
                     }
-
-                // IMAGE EXAMPLE
-                //     var encoder = GetEncoder(extension);
-
-                //     if (encoder != null)
-                //     {
-                //         var thumbnailWidth = Convert.ToInt32(Environment.GetEnvironmentVariable("THUMBNAIL_WIDTH"));
-                //         var thumbContainerName = Environment.GetEnvironmentVariable("THUMBNAIL_CONTAINER_NAME");
-                //         var blobServiceClient = new BlobServiceClient(BLOB_STORAGE_CONNECTION_STRING);
-                //         var blobContainerClient = blobServiceClient.GetBlobContainerClient(thumbContainerName);
-                //         var blobName = GetBlobNameFromUrl(createdEvent.Url);
-
-                //         log.LogInformation($"Processing: {createdEvent.Url}");
-
-                //         using (var output = new MemoryStream())
-                //         using (Image<Rgba32> image = Image.Load(input))
-                //         {
-                //             var divisor = image.Width / thumbnailWidth;
-                //             var height = Convert.ToInt32(Math.Round((decimal)(image.Height / divisor)));
-
-                //             image.Mutate(x => x.Resize(thumbnailWidth, height));
-                //             image.Save(output, encoder);
-                //             output.Position = 0;
-                //             await blobContainerClient.UploadBlobAsync(blobName, output);
-                //         }
-                //     }
-                //     else
-                //     {
-                //         log.LogInformation($"No encoder support for: {createdEvent.Url}");
-                //     }
 
                 }
                 else
@@ -161,4 +139,5 @@ namespace ImageFunctions
             }
         }
     }
+
 }

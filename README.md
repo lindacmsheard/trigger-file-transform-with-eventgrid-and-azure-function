@@ -112,6 +112,23 @@ TODO: figure out whether ImageFunctions can just be renamed to BlobEventFunction
 
 TODO: follow some of the tips in the top of the function code file
 
+```
+dotnet --version
+//-> 6.0.100
+
+cd ImageFunctions
+
+func start --csharp
+
+// ->
+Functions:
+
+        Extractdoc: eventGridTrigger
+
+        Thumbnail: eventGridTrigger
+```
+
+
 3. Re-deploy the function app
 ```
 az functionapp deployment source sync --name $functionAppName --resource-group $newResourceGroup
