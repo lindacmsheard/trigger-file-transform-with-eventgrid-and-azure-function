@@ -5,7 +5,8 @@ This repo is adapted from https://github.com/Azure-Samples/function-image-upload
 
 Goals: 
 - [x] replicate the `Thumbnail` function to generate image thumbnails on upload of image files
-- [ ] create an Extractdoc function to extract a stringified json document from another json doc (WIP, see dev branch)
+- [x] create an Extractdoc function to extract a stringifie 
+- [ ] stretch - update the whole thing to functions v3 or v4
 
 1. Create the required Azure resources
 
@@ -75,7 +76,7 @@ Goals:
 
     > Note: if this command errors with a note that it can't find the function app, the resource deployment may not yet have finished. Wait and try again. 
 
-4. Create and Event Grid subscription
+4. Create an Event Grid subscription
 
     This eventgrid subscription connects events that are raised when a new blob is created to the execution of the function.
 
@@ -101,7 +102,81 @@ Goals:
 
 
 
+## Create a new function to process json documents
 
+0. Pre-reqs
+
+create two containers in the LANDING_ZONE storage account:
+- `changefeedtest`: this will be the landing location for the incoming json documents, analogous to the `images` container in the previous example.
+- `changefeeddocs`: This wwil be the destination for storing the extracted json string as documents, analogous to the `thumbnails` container in the previous example. 
+
+1. Review ./ImageFunctions/Extractdoc.cs
+
+TODO: figure out whether ImageFunctions can just be renamed to BlobEventFunctions, and whether just adding a new CS doc to the project is sufficient for another function to be compiled on deploy
+
+2. Test locally
+
+start the function locally
+```
+dotnet --version
+//-> 6.0.100
+
+cd ImageFunctions
+
+func start --csharp
+
+// ->
+Functions:
+
+        Extractdoc: eventGridTrigger
+
+        Thumbnail: eventGridTrigger
+```
+
+Authenticate and start up ngrok
+```
+ngrok authtoken <token from online ngrok account>  # once, will be saved in config file at ~/.ngrok2/ngrok.yml
+
+ngrok http -host-header=localhost 7071
+```
+
+Add a storage account event subscription to call the locally running function via ngrok
+
+```
+sourceid=$(az resource list -n <data storage account name> -g <rg of data storage account> --query [].id -o tsv )
+ngrokendpoint=https://<guid_from_ngrok_output>.ngrok.io
+
+az eventgrid event-subscription create  --name testdocsub \
+                                        --source-resource-id $sourceid \
+                                        --included-event-types Microsoft.Storage.BlobCreated \
+                                        --subject-begins-with /blobServices/default/containers/changefeedtest/ \
+                                        --subject-ends-with .json \
+                                        --endpoint-type webhook \
+                                        --endpoint  $ngrokendpoint/runtime/webhooks/EventGrid?functionName=Extractdoc \
+                                        --labels function-extractdoc-localtest
+```
+
+Within 5 minutes, navigate to the ngrok logs `localhost:4040` in the browser to inspect the POST request sent to ngrok by the event-subscription create event, and navigate to the validationUrl received in the message to complete the provisioning. 
+
+
+3. Re-deploy the function app
+```
+az functionapp deployment source sync --name $functionAppName --resource-group $newResourceGroup
+```
+
+4. Add a new eventgrid subscription 
+```
+   az eventgrid event-subscription create  --name jsonextractdocsub \
+                                            --source-resource-id $sourceid \
+                                            --included-event-types Microsoft.Storage.BlobCreated \
+                                            --subject-begins-with /blobServices/default/containers/changefeedtest/ \
+                                            --subject-ends-with .json \
+                                            --endpoint-type azurefunction \
+                                            --endpoint $functionappid/functions/Extractdoc \
+                                            --labels function-extractdoc
+
+```
+5. Test
 
 
 
