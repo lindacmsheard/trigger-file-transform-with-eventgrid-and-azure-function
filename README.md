@@ -208,11 +208,11 @@ az storage blob list --num-results "*" -c $container --prefix $path --account-na
 
 ```
 
-This Eventgrid + CSharp function implementation outperforms the BlobTrigger + Python function implementation, primarily because of the single threaded nature of the Azure python function app, which scales out to more workers only under significant load. 
+This Eventgrid + CSharp function implementation outperforms the BlobTrigger + Python function implementation [here](https://github.com/lindacmsheard/trigger-json-transform-with-azure-function), primarily because of the single threaded nature of the Azure python function app, which scales out to more workers only under significant load. 
 
-For folders of 50000 - 100000 small files, the limiting factor is the upload speed - from Azure compute, this is around `~3 ms` per file for larger batches, and the function execution completes at the same time as the upload completes. 
+For folders of 50000 - 100000 small files, in the case of this .NET implementation, the limiting factor is the upload speed - from Azure cloud compute (AML compute instance) to blob storage, this is around `~3 ms` per file, and the function execution completes at the same time as the upload completes. 
 
-This means a folder of 10000 files is processed in around 40 seconds, and a folder of 100000 files in around 5 minutes
+This means a folder of 10,000 files is processed in around 40 seconds, and a folder of 100,000 files in around 5 minutes
 
 Conversely, the python app implementation takes 12 minutes and 1h:45m respectively, i.e on average `~60ms` per file
 
