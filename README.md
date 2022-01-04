@@ -104,7 +104,13 @@ Goals:
 
 ## Create a new function to process json documents
 
-1. Create ./ImageFunctions/Extractdoc.cs
+0. Pre-reqs
+
+create two containers in the LANDING_ZONE storage account:
+- `changefeedtest`: this will be the landing location for the incoming json documents, analogous to the `images` container in the previous example.
+- `changefeeddocs`: This wwil be the destination for storing the extracted json string as documents, analogous to the `thumbnails` container in the previous example. 
+
+1. Review ./ImageFunctions/Extractdoc.cs
 
 TODO: figure out whether ImageFunctions can just be renamed to BlobEventFunctions, and whether just adding a new CS doc to the project is sufficient for another function to be compiled on deploy
 
